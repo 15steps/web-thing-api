@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+
+    <title>Web Thing API</title>
+
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
+    <!-- Compiled and minified JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+    <style>
+        .container {
+        overflow: auto;
+        display: flex;
+        padding-bottom: 30px;
+        margin: 0 auto;
+        margin-bottom: 10px;
+    }
+    .content {
+        margin: 0 auto;
+        width: 40%;
+        height: 100%;
+    }
+    </style>
+</head>
+
+<body class="grey lighten-4">
+    <!-- <div id="main"></div> -->
+    <nav id="header" class="nav-extended" style="margin-bottom: 20px">
+        <div class="nav-wrapper">
+            <a id="connectionStatus" href="#" class="brand-logo center">Status: undefined</a>
+        </div>
+        <div class="nav-content center">
+            <small>Click to toggle connection</small>
+        </div>
+    </nav>
+    <!-- <div class="header">
+
+    </div> -->
+    <!-- setProperty - propertyStatus -->
+    <div class="card-panel container blue lighten-4">
+        <div class="content">
+            <h4>Setting a property (setProperty):</h4>
+            <div style="display: flex;">
+                <label for="rLed">R</label>
+                <input type="number" id="rLed" min="0" max="255" value="0">
+                <label for="gLed">G</label>
+                <input type="number" id="gLed" min="0" max="255" value="0">
+                <label for="bLed">B</label>
+                <input type="number" id="bLed" min="0" max="255" value="0">
+            </div>
+            <label for="setPropertyRequest">JSON</label>
+            <textarea class="materialize-textarea" id="setPropertyRequest" disabled style="flex: 1"></textarea>
+            <button class="waves-effect waves-light btn-small" id="setProperty">SEND</button>
+        </div>
+        <div class="content">
+            <h4>Response (propertyStatus):</h4>
+            <label for="propertyStatusResponse">JSON</label>
+            <textarea class="materialize-textarea" id="propertyStatusResponse" disabled style="flex: 1"></textarea>
+        </div>
+    </div>
+
+    <!-- requestAction - actionStatus -->
+    <div class="card-panel container cyan lighten-4">
+        <div class="content">
+            <h4>Displaying a text (requestAction):</h4>
+            <div>
+                <label for="displayText">Text</label>
+                <input type="text" id="displayText">
+                <label for="requestActionRequest">JSON</label>
+                <textarea class="materialize-textarea" id="requestActionRequest" disabled style="flex: 1"></textarea>
+                <button class="waves-effect waves-light btn-small" id="requestAction">SEND</button>
+            </div>
+        </div>
+        <div class="content">
+            <h4>Response (actionStatus):</h4>
+            <label for="actionStatusResponse">JSON</label>
+            <textarea class="materialize-textarea" id="actionStatusResponse" disabled style="flex: 1"></textarea>
+        </div>
+    </div>
+
+    <!-- addEventSubscription - event -->
+    <div class="card-panel container teal lighten-4">
+        <div class="content">
+            <h4>Subscribing to temperature changes (addEventSubscription)</h4>
+            <label for="eventRequest">JSON</label>
+            <textarea class="materialize-textarea" id="eventRequest" disabled style="flex: 1"></textarea>
+            <button class="waves-effect waves-light btn-small" id="addEventSubscription">SUBSCRIBE</button>
+        </div>
+        <div class="content">
+            <h4>Response (event)</h4>
+            <label for="eventResponse">JSON</label>
+            <textarea class="materialize-textarea" id="eventResponse" disabled style="max-height: 250px"></textarea>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+
+    <script lang="javascript">
+        function onopen() {
+            $('#header').removeClass('red darken-1');
+            $('#header').addClass('green darken-1');
+            $('#connectionStatus').html('Status: connected');
+        }
+
+        function onclose() {
+            $('#header').removeClass('green darken-1');
+            $('#header').addClass('red darken-1');
+            $('#connectionStatus').html('Status: disconnected');
+        }
+
+        function onmessage(e) {
+            var type = JSON.parse(e.data).messageType;
+            if (type === 'propertyStatus') {
+                $('#propertyStatusResponse').text(e.data);
+            } else if (type === 'actionStatus') {
+                $('#actionStatusResponse').text(e.data);
+            } else if (type === 'event') {
+                $('#eventResponse').prepend('\n\n');
+                $('#eventResponse').prepend(e.data);
+            }
+            M.textareaAutoResize($('#' + type + 'Response'));
+        }
+
+        function reattachListeners(socket) {
+            socket.addEventListener('open', onopen);
+            socket.addEventListener('close', onclose);
+            socket.addEventListener('message', onmessage);
+        }
+        $(document).ready(function () {
+            //Setting up connection
+            var connection = new WebSocket("ws://localhost:8080/pi");
+            $('#connectionStatus').html('Status: disconnected');
+
+            reattachListeners(connection);
+
+            // Setting listeners
+            $('#setProperty').on('click', function (e) {
+                e.preventDefault();
+                var r = $('#rLed').val();
+                var g = $('#gLed').val();
+                var b = $('#bLed').val();
+                setProperty(r, g, b);
+            });
+
+            $('#requestAction').on('click', function (e) {
+                e.preventDefault();
+                var text = $('#displayText').val();
+                requestAction(text);
+            });
+
+            $('#addEventSubscription').on('click', function (e) {
+                e.preventDefault();
+                addEventSubscription();
+                $('#addEventSubscription').addClass('disabled');
+            });
+
+            $('#connectionStatus').on('click', function () {
+                // connection = new WebSocket("ws://localhost:8080/pi");
+                if (isConnectionValid()) {
+                    connection.close();
+                    $('textarea').text('');
+                    $('button').addClass('disabled')
+                } else {
+                    connection = new WebSocket("ws://localhost:8080/pi");
+                    reattachListeners(connection);
+                    $('button').removeClass('disabled')
+                }
+            });
+
+            // Utility
+            function isConnectionValid() {
+                return connection && connection.readyState === connection.OPEN;
+            }
+
+            // Requests
+            function setProperty(r, g, b) {
+                if (isConnectionValid()) {
+                    var req = JSON.stringify({
+                        messageType: "setProperty",
+                        data: {
+                            led: {
+                                r: r,
+                                g: g,
+                                b: b
+                            }
+                        }
+                    });
+                    connection.send(req);
+                    $('#setPropertyRequest').text(req);
+                    M.textareaAutoResize($('#setPropertyRequest'));
+                }
+            }
+
+            function requestAction(text) {
+                if (isConnectionValid()) {
+                    var req = JSON.stringify({
+                        messageType: "requestAction",
+                        data: {
+                            setDisplayText: {
+                                text: text
+                            },
+                        }
+                    });
+                    connection.send(req);
+                    $('#requestActionRequest').text(req);
+                    M.textareaAutoResize($('#requestActionRequest'));
+                }
+            }
+
+            function addEventSubscription() {
+                if (isConnectionValid()) {
+                    var req = JSON.stringify({
+                        messageType: "addEventSubscription",
+                        data: {
+                            temperature: {},
+                        }
+                    });
+                    connection.send(req);
+                    $('#eventRequest').text(req);
+                    M.textareaAutoResize($('#eventRequest'));
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
