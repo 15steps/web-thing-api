@@ -103,6 +103,7 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
     <script lang="javascript">
+        var connectionURL = location.origin.replace(/^http/, 'ws');
         function onopen() {
             $('#header').removeClass('red darken-1');
             $('#header').addClass('green darken-1');
@@ -135,7 +136,7 @@
         }
         $(document).ready(function () {
             //Setting up connection
-            var connection = new WebSocket("ws://localhost:8080/pi");
+            var connection = new WebSocket(connectionURL);
             $('#connectionStatus').html('Status: disconnected');
 
             reattachListeners(connection);
@@ -162,13 +163,12 @@
             });
 
             $('#connectionStatus').on('click', function () {
-                // connection = new WebSocket("ws://localhost:8080/pi");
                 if (isConnectionValid()) {
                     connection.close();
                     $('textarea').text('');
                     $('button').addClass('disabled')
                 } else {
-                    connection = new WebSocket("ws://localhost:8080/pi");
+                    connection = new WebSocket(connectionURL);
                     reattachListeners(connection);
                     $('button').removeClass('disabled')
                 }

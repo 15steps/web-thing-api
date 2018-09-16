@@ -8,13 +8,14 @@ const app = express();
 
 // Serving static files on root
 app.use('/', express.static(path.join(__dirname + '/../public')));
-app.listen(process.env.PORT || 3000, () => { console.log('Express server started on port 3000'); });
+const server = app.listen(process.env.PORT || 3000, () => { console.log('Express server started on port 3000'); });
 
 // WebSocket
 const WebSocketServer = WebSocket.Server;
-const wss = new WebSocketServer({port: 8080, path: '/pi'});
+// Using express as a WSS server
+const wss = new WebSocketServer({server});
 
-// Extending WebSocket to send json object mor easily
+// Extending WebSocket to send json object more easily
 WebSocket.prototype.json = function(data) {
     if (typeof data === 'object') {
         this.send(JSON.stringify(data));
