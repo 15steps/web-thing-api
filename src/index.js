@@ -8,7 +8,7 @@ const app = express();
 
 // Serving static files on root
 app.use('/', express.static(path.join(__dirname + '/../public')));
-app.listen(3000, () => { console.log('Express server started on port 3000'); });
+app.listen(process.env.PORT || 3000, () => { console.log('Express server started on port 3000'); });
 
 // WebSocket
 const WebSocketServer = WebSocket.Server;
